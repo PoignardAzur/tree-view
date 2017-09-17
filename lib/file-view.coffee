@@ -15,7 +15,7 @@ class FileView
     @fileName = document.createElement('span')
     @fileName.classList.add('name', 'icon')
     @element.appendChild(@fileName)
-    @fileName.textContent = @file.name
+    @fileName.textContent = 'ooo - ' + @file.name
     @fileName.title = @file.name
     @fileName.dataset.name = @file.name
     @fileName.dataset.path = @file.path
