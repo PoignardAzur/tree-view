@@ -1,6 +1,8 @@
 {CompositeDisposable} = require 'event-kit'
 Directory = require './directory'
 FileView = require './file-view'
+File = require './file'
+MultifileView = require './multiple-files-view'
 {repoForPath} = require './helpers'
 
 module.exports =
@@ -8,6 +10,9 @@ class DirectoryView
   constructor: (@directory) ->
     @subscriptions = new CompositeDisposable()
     @subscriptions.add @directory.onDidDestroy => @subscriptions.dispose()
+
+    @displayedViews = []
+    @multifileViews = {}
     @subscribeToDirectory()
 
     @element = document.createElement('li')
@@ -61,6 +66,8 @@ class DirectoryView
 
     @expand() if @directory.expansionState.isExpanded
 
+    @element.name = @directory.name
+
     @element.collapse = @collapse.bind(this)
     @element.expand = @expand.bind(this)
     @element.toggleExpansion = @toggleExpansion.bind(this)
@@ -79,21 +86,53 @@ class DirectoryView
     @element.classList.add("status-#{@directory.status}") if @directory.status?
 
   subscribeToDirectory: ->
+
     @subscriptions.add @directory.onDidAddEntries (addedEntries) =>
       return unless @isExpanded
 
-      numberOfEntries = @entries.children.length
-
       for entry in addedEntries
-        view = @createViewForEntry(entry)
+        if entry instanceof Directory
+          @addView(new DirectoryView(entry))
+          continue
 
-        insertionIndex = entry.indexInParentDirectory
-        if insertionIndex < numberOfEntries
-          @entries.insertBefore(view.element, @entries.children[insertionIndex])
+        prefix = @_getPrefix(entry.name)
+        _getPrefix = @_getPrefix
+
+        if multifile = @multifileViews[prefix]
+          multifile.addView(new FileView(entry))
+
+        # Find existing file view with same prefix
+        else if mergeFile = @displayedViews.find(
+          (view) -> _getPrefix(view.element.name) == prefix
+        )
+          multifile = new MultifileView(@directory.path + '/' + prefix + '.', prefix, true)
+          @multifileViews[prefix] = multifile
+          @removeView(mergeFile)
+          @addView(multifile)
+          multifile.addView(new FileView(entry))
+          multifile.addView(mergeFile)
+
         else
-          @entries.appendChild(view.element)
+          @addView(new FileView(entry))
 
-        numberOfEntries++
+    @subscriptions.add @directory.onDidRemoveEntries (removedEntries) =>
+      for removedName, removedEntry of removedEntries
+        unless removedEntry instanceof Directory
+          if multifile = @multifileViews[@_getPrefix(removedName)]
+            multifile.removeView(removedName)
+            if lastView = multifile.lastView()
+              @removeView(multifile)
+              @addView(lastView)
+              delete @multifileViews[@_getPrefix(removedName)]
+
+        if view = @displayedViews.find((view) -> view.element.name == removedName)
+          @removeView(view)
+
+  _getPrefix: (name) ->
+    i = name.lastIndexOf(".")
+
+    return name if i == -0 || i == -1
+    return name.slice(0, i)
 
   getPath: ->
     @directory.path
@@ -101,20 +140,16 @@ class DirectoryView
   isPathEqual: (pathToCompare) ->
     @directory.isPathEqual(pathToCompare)
 
-  createViewForEntry: (entry) ->
-    if entry instanceof Directory
-      view = new DirectoryView(entry)
-    else
-      view = new FileView(entry)
+  addView: (view) ->
+    insertionIndex = @displayedViews.findIndex(
+      (child) -> view.element.name < child.element.name
+    )
+    @entries.insertBefore(view.element, @entries.children[insertionIndex] || null)
+    @displayedViews.splice(insertionIndex, 0, view)
 
-    subscription = @directory.onDidRemoveEntries (removedEntries) ->
-      for removedName, removedEntry of removedEntries when entry is removedEntry
-        view.element.remove()
-        subscription.dispose()
-        break
-    @subscriptions.add(subscription)
-
-    view
+  removeView: (view) ->
+    @entries.removeChild(view.element)
+    @displayedViews.splice(@displayedViews.indexOf(view), 1)
 
   reload: ->
     @directory.reload() if @isExpanded

@@ -15,7 +15,7 @@ class FileView
     @fileName = document.createElement('span')
     @fileName.classList.add('name', 'icon')
     @element.appendChild(@fileName)
-    @fileName.textContent = 'ooo - ' + @file.name
+    @fileName.textContent = @file.name
     @fileName.title = @file.name
     @fileName.dataset.name = @file.name
     @fileName.dataset.path = @file.path
@@ -28,6 +28,8 @@ class FileView
 
     @subscriptions.add @file.onDidStatusChange => @updateStatus()
     @updateStatus()
+
+    @element.name = @file.name
 
     @element.getPath = @getPath.bind(this)
     @element.isPathEqual = @isPathEqual.bind(this)

@@ -18,7 +18,8 @@
     "underscore-plus": "^1.0.0"
   },
   "devDependencies": {
-    "coffeelint": "^1.9.7"
+    "coffeelint": "^1.9.7",
+    "coffeescript": "^2.0.1"
   },
   "deserializers": {
     "TreeView": "getTreeViewInstance"
