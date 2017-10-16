@@ -13,7 +13,7 @@ class DirectoryView
 
     @displayedViews = []
     @multifileViews = {}
-    @subscribeToDirectory()
+    @_subscribeToDirectory()
 
     @element = document.createElement('li')
     @element.setAttribute('is', 'tree-view-directory')
@@ -85,7 +85,7 @@ class DirectoryView
     @element.classList.remove('status-ignored', 'status-modified', 'status-added')
     @element.classList.add("status-#{@directory.status}") if @directory.status?
 
-  subscribeToDirectory: ->
+  _subscribeToDirectory: ->
 
     @subscriptions.add @directory.onDidAddEntries (addedEntries) =>
       return unless @isExpanded
@@ -183,3 +183,5 @@ class DirectoryView
     @element.classList.add('collapsed')
     @directory.collapse()
     @entries.innerHTML = ''
+    @displayedViews = []
+    @multifileViews = {}
